@@ -1,0 +1,173 @@
+# PostgreSQLCommands
+Postgres diagram, schema and commands for a simple example that shows how this database works.
+
+/* Logging in your local Postgres database */
+```
+psql -h localhost -p 5432 -U postgres
+```
+
+/* Showing databases */
+```
+\l
+```
+
+/* Connecting to database named 'test' */
+```
+\c test
+```
+
+/* Copy the .sql file to Deskton and execute the following command: */
+```
+\i \Desktop\employee_car.sql
+```
+
+/* Once tables are created and data is inserted, then execute the following commands to learn and test Postgres */
+
+/* Simple SELECT command on table employees, which selects all the columns */
+```
+SELECT * FROM employee;
+```
+
+/* Selecting only some specific attributes from table employees */
+SELECT first_name, last_name FROM employee;
+
+/* WHERE with AND */
+SELECT first_name FROM employee WHERE first_name = 'George' AND first_name = 'Jorge';
+
+/* LIMIT */
+SELECT first_name FROM employee WHERE country_of_birth = 'Mexico' LIMIT 6;
+
+/* OFFSET*/
+SELECT first_name FROM employee WHERE country_of_birth = 'Brazil' OFFSET 6;
+
+/* OFFSET and LIMIT */
+SELECT first_name FROM employee WHERE country_of_birth = 'Germany' OFFSET 6 LIMIT 6;
+
+/* BETWEEN */
+SELECT date_of_birth FROM employee WHERE country_of_birth = 'India' BETWEEN DATE '1988-01-01' AND '1989-12-31';
+
+/* LIKE keyword usage. The '%' means 'anything' */
+SELECT email FROM employee WHERE email LIKE '%@gmail.%';
+
+/* Showing all the countries available in the table */
+SELECT DISTINCT country_of_birth FROM employee;
+
+/* Showing the amount of people from each country in the table and grouping by country of birth */
+SELECT country_of_birth, COUNT(*) FROM employee GROUP BY country_of_birth;
+
+/* Showing the amount of people from each country in the table and grouping by country of birth. Only countries with at least 3 records will be shown */
+SELECT country_of_birth, COUNT(*) FROM employee GROUP BY country_of_birth HAVING COUNT(*) => 3 ORDER BY country_of_birth;
+
+/* Usage of COALESCE */
+SELECT COALESCE(email, 'Email not provided') FROM employee;
+
+/* Displaying TIMESTAMP - which is a combination of date + milissenconds + time + timezone */
+SELECT NOW();
+
+/* Displaying TIMESTAMP and casting it to DATE */
+SELECT NOW()::DATE;
+
+/* Displaying TIMESTAMP and casting it to TIME */
+SELECT NOW()::TIME;
+
+/* Displaying TIMESTAMP (one month ago) and casting everything to DATE*/
+SELECT (NOW() - INTERVAL '1 MONTH')::DATE;
+
+/* Displaying extracted field from TIMESTAMP - in this case, YEAR */
+SELECT EXTRACT(YEAR FROM NOW());
+
+/* Displaying extracted field from TIMESTAMP - in this case, MONTH */
+SELECT EXTRACT(MONTH FROM NOW());
+
+/* Displaying extracted field from TIMESTAMP - in this case, DAY */
+SELECT EXTRACT(DAY FROM NOW());
+
+/* AGE() function */
+SELECT first_name, last_name, country_of_birth, date_of_birth, (AGE(NOW(), date_of_birth)) AS age FROM employee;
+
+/* Removing the PRIMARY KEY constraint (id) in order to allow the insertion of ids manually */
+ALTER TABLE employee DROP CONSTRAINT employee_ekey;
+
+/* Adding PRIMARY KEY constraint on id column from table employees */
+ALTER TABLE employee ADD PRIMARY KEY (id);
+
+/* Counting emails from table employee that have more than 1 identical record (null emails are considered in this logic) */
+SELECT email, COUNT(*) FROM employee GROUP BY email HAVING COUNT(*) > 1;
+
+/* Adding UNIQUE KEY on email column on table employees - method 1 - with constraint name defined by Postgres */
+ALTER TABLE employee ADD CONSTRAINT UNIQUE (email);
+
+/* Adding UNIQUE KEY on email column on table employees - method 2 - with constraint name defined by you */
+ALTER TABLE employee ADD CONSTRAINT unique_email_address UNIQUE (email);
+
+/* Adding gender CONSTRAINT on table employees, making it possible to register a new record only with 'Male' and 'Female' possibilitoes for gender */
+ALTER TABLE employee ADD CONSTRAINT gender_constraint CHECK (gender = 'Male' OR gender = 'Female');
+
+/* Deleting all records from employees table */
+DELETE FROM employee;
+
+/* Deleting records by id */
+DELETE FROM employee WHERE id = 99;
+
+/* Deleting records using multiple filters */
+DELETE FROM employee WHERE gender = 'Female' AND country_of_birth = 'Mexico';
+
+/* Updating email using WHERE clause */
+UPDATE employee SET email = 'anthonybraugher@gmail.com' WHERE id = 152;
+
+/* Updating multiple columns using WHERE clause */
+UPDATE employee SET first_name = 'Anthony', email = 'anthonybraugher@gmail.com' WHERE id = 152;
+
+/* Insering new data on multiple columns and dealing with conflicts with ON CONFLICT keyword */
+INSERT INTO employee(id, first_name, last_name, email, job_position, gender, date_of_birth, country_of_birth)
+VALUES (12, 'Andrew', 'Morison', 'andymorr@yahoo.com', 'IT Manager', 'Male', '1980-11-13', 'England')
+ON CONFLICT (id) DO NOTHING;
+
+/* Inserting new data on multiple columns and performing UPDATE on email after dealing with conflicts with ON CONFLICT keyword */
+INSERT INTO employee(id, first_name, last_name, email, job_position, gender, date_of_birth, country_of_birth)
+VALUES (12, 'Andrew', 'Morison', 'andymorr@yahoo.com', 'IT Manager', 'Male', '1980-11-13', 'England')
+ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email;
+
+/* Updating FOREIGN KEY columns */
+UPDATE employee SET car_id = 2 WHERE id = 13;
+
+/* Examples of INNER JOIN */
+SELECT * FROM employee
+JOIN car ON employee.car_id = car.id;
+
+SELECT employee.first_name, car.brand, car.model, car.year
+FROM employee
+JOIN car ON employee.car_id = car.id;
+
+/* Examples of LEFT JOIN */
+SELECT * FROM employee
+LEFT JOIN car ON employee.car_id = car.id;
+
+/* Figuring out people who don't have cars with LEFT JOIN */
+SELECT * FROM employee
+LEFT JOIN car ON employee.car_id = car.id
+WHERE car.* IS NULL;
+
+/* Exporting query results to CSV */
+\copy (SELECT * FROM employee LEFT JOIN car ON car.id = employee.car_id) TO '\Users\guilh\query_result.csv' DELIMITER ',' CSV HEADER;
+
+/* Accessing Postgres extensions */
+SELECT * FROM pg_available_extensions;
+
+/* Creating extension (only if it doesn't exist) */
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+/* Invoking function to generate random uuid */
+SELECT uuid_generate_v4();
+
+/* uuid is universally unique and they're a really good option to be used as PRIMARY KEYs on tables, so it'd be hard for hackers to attack the system with these sequences. Since they are universally unique, the data can be migrated to any other system without major conflicts. */
+
+/* Another way of using JOIN/LEFT JOIN command */
+SELECT * FROM employee
+JOIN car USING (car_uid);
+
+SELECT * FROM employee
+LEFT JOIN car USING (car_uid);
+
+/* Assigning 'Lotus Espirit 2001' to 'Adolphus Reynold' */
+UPDATE employee SET car_uid = 'a714d73c-2e05-47f6-a261-ad98918abcb1' WHERE employee_uid = '163f7cee-71cf-4fbc-929a-ac8d3f0a8911';
